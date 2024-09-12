@@ -1,0 +1,22 @@
+# Build outputs
+bin/
+build/
+obj/
+*.o
+*.d
+*.a
+*.so
+*.exe
+*.out
+
+# Data files
+*.bin
+*.dat
+output/
+test_output/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
