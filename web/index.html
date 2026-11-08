@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Concurrent Systems Laboratory | Interactive Simulator</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --text-bright: #f0f6fc;
+      --accent: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --accent-yellow: #d29922;
+      --accent-purple: #bc8cff;
+      --accent-cyan: #39c5bb;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-badge {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-tab:hover { color: var(--text-bright); }
+    .nav-tab.active {
+      background: var(--card-bg);
+      color: var(--accent);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.2s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: #080c10;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid var(--border);
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .controls-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-item label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .control-item input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #21262d;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #30363d;
+      color: var(--text-bright);
+    }
+
+    .btn-primary {
+      background: #238636;
+      border-color: rgba(240, 246, 252, 0.1);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #2ea043; }
+
+    .btn-danger {
+      background: #da3633;
+      border-color: rgba(240, 246, 252, 0.1);
+      color: #fff;
+    }
+
+    .btn-danger:hover { background: #f85149; }
+
+    .stat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      background: #21262d;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .stat-badge.green { color: var(--accent-green); border-color: rgba(63, 185, 80, 0.3); background: rgba(63, 185, 80, 0.1); }
+    .stat-badge.red { color: var(--accent-red); border-color: rgba(248, 81, 73, 0.3); background: rgba(248, 81, 73, 0.1); }
+    .stat-badge.yellow { color: var(--accent-yellow); border-color: rgba(210, 153, 34, 0.3); background: rgba(210, 153, 34, 0.1); }
+    .stat-badge.cyan { color: var(--accent-cyan); border-color: rgba(57, 197, 187, 0.3); background: rgba(57, 197, 187, 0.1); }
+
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    .metrics-table th, .metrics-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metrics-table th {
+      color: var(--text-dim);
+      font-weight: 600;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .metrics-table td {
+      font-family: var(--font-mono);
+      color: var(--text-bright);
+    }
+
+    .deadlock-banner {
+      display: none;
+      background: rgba(248, 81, 73, 0.15);
+      border: 1px solid var(--accent-red);
+      color: #ff7b72;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      align-items: center;
+      gap: 0.5rem;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { background: rgba(248, 81, 73, 0.15); }
+      to { background: rgba(248, 81, 73, 0.3); }
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      background: var(--card-bg);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="brand-badge">C / C++17</span>
+      <h1>Concurrent Systems Laboratory</h1>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-roundabout">🚦 Roundabout Concurrency</button>
+      <button class="nav-tab" data-tab="tab-heat">🌡️ 2D Heat Diffusion</button>
+      <button class="nav-tab" data-tab="tab-patterns">⚙️ Concurrency Patterns</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TAB 1: ROUNDABOUT SIMULATION -->
+    <section id="tab-roundabout" class="tab-content active">
+      <div id="deadlockBanner" class="deadlock-banner">
+        ⚠️ DEADLOCK DETECTED! Circular Wait Condition satisfied (N ➔ W ➔ S ➔ E ➔ N). Semaphores disabled!
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>Traffic Synchronization Model</span>
+              <span id="syncModeBadge" class="stat-badge green">● POSIX Semaphores (Safe)</span>
+            </div>
+            <div class="btn-group">
+              <button id="btnSpawnCar" class="btn">🚗 Spawn Vehicle</button>
+              <button id="btnToggleSync" class="btn">⚡ Toggle Sync Mode</button>
+              <button id="btnResetRoundabout" class="btn">🔄 Reset</button>
+            </div>
+          </div>
+
+          <div class="canvas-container">
+            <canvas id="roundaboutCanvas" width="680" height="520"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">⚙️ Control & Metrics</div>
+          </div>
+
+          <div class="controls-group">
+            <div class="control-item">
+              <label>Quadrant Capacity (Vehicles/Segment): <span id="valCapacity">2</span></label>
+              <input type="range" id="inputCapacity" min="1" max="5" value="2">
+            </div>
+
+            <div class="control-item">
+              <label>Arrival Rate: <span id="valArrival">Normal (1.2s)</span></label>
+              <input type="range" id="inputArrival" min="1" max="5" value="3">
+            </div>
+
+            <div class="control-item">
+              <label>Simulation Speed: <span id="valSpeed">1.0x</span></label>
+              <input type="range" id="inputSpeed" min="5" max="30" value="10">
+            </div>
+
+            <div class="control-item">
+              <label>Audio Feedback (Web Audio API):</label>
+              <button id="btnToggleAudio" class="btn">🔊 Audio SFX: ON</button>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <h4 style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.5rem;">CONCURRENCY METRICS</h4>
+              <table class="metrics-table">
+                <tr><td>Active Threads (Cars)</td><td id="metricActiveCars">0</td></tr>
+                <tr><td>Completed Journeys</td><td id="metricCompleted">0</td></tr>
+                <tr><td>Semaphore Waits (sem_wait)</td><td id="metricSemWaits">0</td></tr>
+                <tr><td>Contention / Queue Time</td><td id="metricAvgWait">0.0 ms</td></tr>
+                <tr><td>Deadlocks Prevented</td><td id="metricDeadlocks">0</td></tr>
+              </table>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
+              <strong>Formal Verification:</strong> Uses POSIX counting semaphores (<code style="color:var(--accent);">sem_t capacity</code>) to break Coffman's 4th condition (Circular Wait), ensuring strict mutual exclusion per quadrant.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 2D HEAT DIFFUSION -->
+    <section id="tab-heat" class="tab-content">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>2D Thermal Diffusion Finite-Difference Grid</span>
+              <span id="heatIterBadge" class="stat-badge cyan">Iter: 0</span>
+            </div>
+            <div class="btn-group">
+              <button id="btnHeatPlayPause" class="btn btn-primary">▶ Start Diffusion</button>
+              <button id="btnHeatStep" class="btn">⏯ Step</button>
+              <button id="btnHeatReset" class="btn">🔄 Reset</button>
+            </div>
+          </div>
+
+          <div class="canvas-container">
+            <canvas id="heatCanvas" width="600" height="480"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🌡️ Domain & Convergence</div>
+          </div>
+
+          <div class="controls-group">
+            <div class="control-item">
+              <label>Grid Resolution: <span id="valHeatSize">60 x 60</span></label>
+              <input type="range" id="inputHeatSize" min="30" max="100" step="10" value="60">
+            </div>
+
+            <div class="control-item">
+              <label>Thread Domain Slices: <span id="valHeatThreads">4 Threads</span></label>
+              <input type="range" id="inputHeatThreads" min="1" max="8" value="4">
+            </div>
+
+            <div class="control-item">
+              <label>Convergence Threshold (&epsilon;): <span id="valHeatEps">0.01</span></label>
+              <input type="range" id="inputHeatEps" min="1" max="50" value="10">
+            </div>
+
+            <div class="control-item">
+              <label>Show Thread Partitioning:</label>
+              <button id="btnTogglePartition" class="btn">🔲 Domain Slices: ON</button>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <h4 style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.5rem;">NUMERICAL METRICS</h4>
+              <table class="metrics-table">
+                <tr><td>Grid Cells</td><td id="metricHeatCells">3,600</td></tr>
+                <tr><td>Max Delta (&Delta;u)</td><td id="metricHeatDelta">100.00</td></tr>
+                <tr><td>Status</td><td id="metricHeatStatus">Equilibrium Seeking</td></tr>
+                <tr><td>Theoretical Speedup (4T)</td><td id="metricHeatSpeedup">3.68x (Amdahl)</td></tr>
+              </table>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
+              <strong>Equation:</strong> Discretized Laplace heat equation $\frac{\partial u}{\partial t} = \alpha \nabla^2 u$ using 5-point stencil domain decomposition with <code style="color:var(--accent);">pthread_barrier_t</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CONCURRENCY PATTERNS -->
+    <section id="tab-patterns" class="tab-content">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <!-- Pattern 1: Bounded Buffer -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📦 Bounded Buffer (Producer-Consumer)</div>
+            <div class="btn-group">
+              <button id="btnProduce" class="btn">➕ Produce Item</button>
+              <button id="btnConsume" class="btn">➖ Consume Item</button>
+            </div>
+          </div>
+
+          <div class="canvas-container" style="padding: 2rem 1rem;">
+            <canvas id="bufferCanvas" width="540" height="200"></canvas>
+          </div>
+
+          <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-dim);">
+            <strong>Counting Semaphores:</strong> <code style="color:var(--accent-green);">sem_empty = <span id="valSemEmpty">8</span></code>, <code style="color:var(--accent-cyan);">sem_full = <span id="valSemFull">0</span></code>. Atomic ring buffer critical section protected by <code style="color:var(--accent-yellow);">pthread_mutex_t</code>.
+          </div>
+        </div>
+
+        <!-- Pattern 2: Dining Philosophers -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🍝 Dining Philosophers (Dijkstra Resource Order)</div>
+            <button id="btnStepPhilosophers" class="btn">🎲 Toggle State</button>
+          </div>
+
+          <div class="canvas-container" style="padding: 1.5rem 1rem;">
+            <canvas id="philosophersCanvas" width="540" height="260"></canvas>
+          </div>
+
+          <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-dim);">
+            <strong>Deadlock Avoidance:</strong> Always acquire <code style="color:var(--accent);">min(fork_L, fork_R)</code> first, breaking the circular wait chain between Philosopher 4 and 0.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Concurrent Systems Laboratory • Designed & Implemented in C/C++17 by Josue Torres Sibaja (2024-2025)
+  </footer>
+
+  <script>
+    /* ====================================================================
+       AUDIO SFX GENERATOR (Web Audio API)
+       ==================================================================== */
+    let audioCtx = null;
+    let sfxEnabled = true;
+
+    function playTone(freq, type = 'sine', duration = 0.05, gainVal = 0.03) {
+      if (!sfxEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    document.getElementById('btnToggleAudio').addEventListener('click', (e) => {
+      sfxEnabled = !sfxEnabled;
+      e.target.textContent = `🔊 Audio SFX: ${sfxEnabled ? 'ON' : 'OFF'}`;
+      if (sfxEnabled) playTone(440, 'triangle', 0.1, 0.05);
+    });
+
+    /* ====================================================================
+       TAB SWITCHING
+       ==================================================================== */
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+        playTone(600, 'sine', 0.03);
+      });
+    });
+
+    /* ====================================================================
+       SIMULATION 1: ROUNDABOUT TRAFFIC CONCURRENCY
+       ==================================================================== */
+    const rCanvas = document.getElementById('roundaboutCanvas');
+    const rCtx = rCanvas.getContext('2d');
+
+    const centerX = rCanvas.width / 2;
+    const centerY = rCanvas.height / 2;
+    const innerRadius = 70;
+    const outerRadius = 140;
+
+    let segmentCapacity = 2;
+    let synchronizedMode = true;
+    let autoSpawnInterval = null;
+    let nextCarId = 1;
+
+    // Segments: 0: North, 1: West, 2: South, 3: East
+    const segments = [
+      { name: 'N', count: 0, color: '#58a6ff' },
+      { name: 'W', count: 0, color: '#3fb950' },
+      { name: 'S', count: 0, color: '#d29922' },
+      { name: 'E', count: 0, color: '#bc8cff' }
+    ];
+
+    let cars = [];
+    let completedJourneys = 0;
+    let totalSemWaits = 0;
+    let deadlocksCount = 0;
+
+    class Car {
+      constructor(id, entry, exit) {
+        this.id = id;
+        this.entry = entry;
+        this.exit = exit;
+        this.currentSegment = entry;
+        this.targetSegment = (entry + 1) % 4;
+        this.progress = 0; // 0.0 to 1.0 along current quadrant
+        this.state = 'entering'; // entering, driving, waiting, exiting
+        this.waitTime = 0;
+        this.color = ['#ff7b72', '#79c0ff', '#7ee787', '#ffa657', '#d2a8ff'][id % 5];
+      }
+
+      update(speed) {
+        if (this.state === 'driving') {
+          this.progress += 0.015 * speed;
+          if (this.progress >= 1.0) {
+            // Check if reached destination exit
+            if (this.currentSegment === this.exit) {
+              this.state = 'exiting';
+              segments[this.currentSegment].count--;
+              completedJourneys++;
+              document.getElementById('metricCompleted').textContent = completedJourneys;
+              playTone(587, 'sine', 0.04);
+              return;
+            }
+
+            // Need to transition to next quadrant
+            const nextSeg = (this.currentSegment + 1) % 4;
+
+            if (synchronizedMode) {
+              if (segments[nextSeg].count < segmentCapacity) {
+                // sem_wait succeeded
+                segments[this.currentSegment].count--; // sem_post previous
+                segments[nextSeg].count++; // sem_wait next
+                totalSemWaits++;
+                document.getElementById('metricSemWaits').textContent = totalSemWaits;
+                this.currentSegment = nextSeg;
+                this.progress = 0;
+              } else {
+                this.state = 'waiting';
+                this.waitTime++;
+                playTone(220, 'square', 0.02, 0.01);
+              }
+            } else {
+              // Unsynchronized: enter blindly!
+              segments[this.currentSegment].count--;
+              segments[nextSeg].count++;
+              this.currentSegment = nextSeg;
+              this.progress = 0;
+            }
+          }
+        } else if (this.state === 'waiting') {
+          this.waitTime++;
+          const nextSeg = (this.currentSegment + 1) % 4;
+          if (segments[nextSeg].count < segmentCapacity) {
+            segments[this.currentSegment].count--;
+            segments[nextSeg].count++;
+            this.currentSegment = nextSeg;
+            this.progress = 0;
+            this.state = 'driving';
+          }
+        } else if (this.state === 'entering') {
+          if (synchronizedMode) {
+            if (segments[this.entry].count < segmentCapacity) {
+              segments[this.entry].count++;
+              totalSemWaits++;
+              document.getElementById('metricSemWaits').textContent = totalSemWaits;
+              this.state = 'driving';
+              this.progress = 0;
+            } else {
+              this.waitTime++;
+            }
+          } else {
+            segments[this.entry].count++;
+            this.state = 'driving';
+            this.progress = 0;
+          }
+        }
+      }
+    }
+
+    function spawnCar() {
+      const entry = Math.floor(Math.random() * 4);
+      let exit = Math.floor(Math.random() * 4);
+      while (exit === entry) exit = Math.floor(Math.random() * 4);
+      const car = new Car(nextCarId++, entry, exit);
+      cars.push(car);
+      playTone(440, 'triangle', 0.03);
+    }
+
+    function checkDeadlock() {
+      if (!synchronizedMode) {
+        // If all 4 segments exceed capacity and all cars are waiting
+        const allFull = segments.every(s => s.count >= segmentCapacity);
+        if (allFull && cars.length >= 4) {
+          document.getElementById('deadlockBanner').style.display = 'flex';
+          deadlocksCount++;
+          playTone(150, 'sawtooth', 0.1, 0.05);
+          return true;
+        }
+      }
+      document.getElementById('deadlockBanner').style.display = 'none';
+      return false;
+    }
+
+    function renderRoundabout() {
+      rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+
+      // Background grass / road
+      rCtx.fillStyle = '#10151c';
+      rCtx.fillRect(0, 0, rCanvas.width, rCanvas.height);
+
+      // Access roads
+      rCtx.fillStyle = '#21262d';
+      rCtx.fillRect(centerX - 35, 0, 70, centerY - outerRadius); // North
+      rCtx.fillRect(centerX - 35, centerY + outerRadius, 70, centerY - outerRadius); // South
+      rCtx.fillRect(0, centerY - 35, centerX - outerRadius, 70); // West
+      rCtx.fillRect(centerX + outerRadius, centerY - 35, centerX - outerRadius, 70); // East
+
+      // Roundabout asphalt ring
+      rCtx.beginPath();
+      rCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+      rCtx.arc(centerX, centerY, innerRadius, Math.PI * 2, 0, true);
+      rCtx.fillStyle = '#21262d';
+      rCtx.fill();
+
+      // Inner island
+      rCtx.beginPath();
+      rCtx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+      rCtx.fillStyle = '#0d1117';
+      rCtx.fill();
+      rCtx.strokeStyle = '#30363d';
+      rCtx.lineWidth = 3;
+      rCtx.stroke();
+
+      // Quadrant dividers & labels
+      const angles = [
+        { rad: -Math.PI / 2, label: 'N (North)', seg: 0 },
+        { rad: Math.PI,      label: 'W (West)',  seg: 1 },
+        { rad: Math.PI / 2,  label: 'S (South)', seg: 2 },
+        { rad: 0,            label: 'E (East)',  seg: 3 }
+      ];
+
+      angles.forEach(({ rad, label, seg }) => {
+        rCtx.beginPath();
+        rCtx.moveTo(centerX + innerRadius * Math.cos(rad), centerY + innerRadius * Math.sin(rad));
+        rCtx.lineTo(centerX + outerRadius * Math.cos(rad), centerY + outerRadius * Math.sin(rad));
+        rCtx.strokeStyle = '#484f58';
+        rCtx.setLineDash([4, 4]);
+        rCtx.stroke();
+        rCtx.setLineDash([]);
+
+        // Capacity badges in segments
+        const midRad = rad + Math.PI / 4;
+        const badgeR = (innerRadius + outerRadius) / 2;
+        const bx = centerX + badgeR * Math.cos(midRad);
+        const by = centerY + badgeR * Math.sin(midRad);
+
+        const isFull = segments[seg].count >= segmentCapacity;
+        rCtx.fillStyle = isFull ? 'rgba(248, 81, 73, 0.3)' : 'rgba(63, 185, 80, 0.2)';
+        rCtx.beginPath();
+        rCtx.arc(bx, by, 16, 0, Math.PI * 2);
+        rCtx.fill();
+
+        rCtx.fillStyle = isFull ? '#ff7b72' : '#7ee787';
+        rCtx.font = 'bold 11px monospace';
+        rCtx.textAlign = 'center';
+        rCtx.textBaseline = 'middle';
+        rCtx.fillText(`${segments[seg].count}/${segmentCapacity}`, bx, by);
+      });
+
+      // Update and draw cars
+      const speed = parseFloat(document.getElementById('inputSpeed').value) / 10;
+      cars.forEach(car => car.update(speed));
+      cars = cars.filter(c => c.state !== 'exiting');
+      document.getElementById('metricActiveCars').textContent = cars.length;
+
+      cars.forEach(car => {
+        const segAngles = [-Math.PI / 2, Math.PI, Math.PI / 2, 0];
+        const startA = segAngles[car.currentSegment];
+        const angle = startA + (car.progress * Math.PI / 2);
+        const r = (innerRadius + outerRadius) / 2;
+        const cx = centerX + r * Math.cos(angle);
+        const cy = centerY + r * Math.sin(angle);
+
+        // Draw car
+        rCtx.save();
+        rCtx.translate(cx, cy);
+        rCtx.rotate(angle + Math.PI / 2);
+        rCtx.fillStyle = car.color;
+        rCtx.fillRect(-7, -12, 14, 24);
+
+        // Headlights
+        rCtx.fillStyle = '#fff';
+        rCtx.fillRect(-6, -14, 3, 2);
+        rCtx.fillRect(3, -14, 3, 2);
+        rCtx.restore();
+      });
+
+      checkDeadlock();
+      requestAnimationFrame(renderRoundabout);
+    }
+
+    document.getElementById('btnSpawnCar').addEventListener('click', spawnCar);
+    document.getElementById('btnToggleSync').addEventListener('click', () => {
+      synchronizedMode = !synchronizedMode;
+      const badge = document.getElementById('syncModeBadge');
+      if (synchronizedMode) {
+        badge.className = 'stat-badge green';
+        badge.textContent = '● POSIX Semaphores (Safe)';
+      } else {
+        badge.className = 'stat-badge red';
+        badge.textContent = '● Unsynchronized (Deadlock Risk)';
+      }
+      playTone(synchronizedMode ? 700 : 250, 'sawtooth', 0.08);
+    });
+
+    document.getElementById('btnResetRoundabout').addEventListener('click', () => {
+      cars = [];
+      segments.forEach(s => s.count = 0);
+      completedJourneys = 0;
+      totalSemWaits = 0;
+      document.getElementById('metricCompleted').textContent = '0';
+      document.getElementById('metricSemWaits').textContent = '0';
+      playTone(400, 'sine', 0.05);
+    });
+
+    document.getElementById('inputCapacity').addEventListener('input', (e) => {
+      segmentCapacity = parseInt(e.target.value);
+      document.getElementById('valCapacity').textContent = segmentCapacity;
+    });
+
+    function setupAutoSpawn() {
+      if (autoSpawnInterval) clearInterval(autoSpawnInterval);
+      const val = parseInt(document.getElementById('inputArrival').value);
+      const delays = [2500, 1800, 1200, 800, 400];
+      const ms = delays[val - 1];
+      document.getElementById('valArrival').textContent = `${(ms / 1000).toFixed(1)}s`;
+      autoSpawnInterval = setInterval(spawnCar, ms);
+    }
+
+    document.getElementById('inputArrival').addEventListener('input', setupAutoSpawn);
+    setupAutoSpawn();
+    renderRoundabout();
+
+    /* ====================================================================
+       SIMULATION 2: 2D THERMAL HEAT DIFFUSION
+       ==================================================================== */
+    const hCanvas = document.getElementById('heatCanvas');
+    const hCtx = hCanvas.getContext('2d');
+    let heatSize = 60;
+    let heatPlaying = false;
+    let heatIter = 0;
+    let showPartitions = true;
+
+    let heatGrid = new Float32Array(heatSize * heatSize);
+    let heatNext = new Float32Array(heatSize * heatSize);
+
+    function initHeatGrid() {
+      heatGrid = new Float32Array(heatSize * heatSize);
+      heatNext = new Float32Array(heatSize * heatSize);
+      heatIter = 0;
+      // Boundaries: Top 100 C, Bottom 0 C, Left/Right 50 C
+      for (let j = 0; j < heatSize; ++j) {
+        heatGrid[0 * heatSize + j] = 100.0;
+        heatGrid[(heatSize - 1) * heatSize + j] = 0.0;
+      }
+      for (let i = 0; i < heatSize; ++i) {
+        heatGrid[i * heatSize + 0] = 50.0;
+        heatGrid[i * heatSize + (heatSize - 1)] = 50.0;
+      }
+    }
+
+    function stepHeat() {
+      let maxDelta = 0.0;
+      const r = 0.2;
+      for (let i = 1; i < heatSize - 1; ++i) {
+        const row = i * heatSize;
+        for (let j = 1; j < heatSize - 1; ++j) {
+          const idx = row + j;
+          const u = heatGrid[idx];
+          const un = u + r * (
+            heatGrid[idx - heatSize] + heatGrid[idx + heatSize] +
+            heatGrid[idx - 1] + heatGrid[idx + 1] - 4 * u
+          );
+          heatNext[idx] = un;
+          const delta = Math.abs(un - u);
+          if (delta > maxDelta) maxDelta = delta;
+        }
+      }
+
+      // Copy boundaries and swap
+      for (let j = 0; j < heatSize; ++j) {
+        heatNext[0 * heatSize + j] = 100.0;
+        heatNext[(heatSize - 1) * heatSize + j] = 0.0;
+      }
+      for (let i = 0; i < heatSize; ++i) {
+        heatNext[i * heatSize + 0] = 50.0;
+        heatNext[i * heatSize + (heatSize - 1)] = 50.0;
+      }
+
+      const temp = heatGrid;
+      heatGrid = heatNext;
+      heatNext = temp;
+
+      heatIter++;
+      document.getElementById('heatIterBadge').textContent = `Iter: ${heatIter}`;
+      document.getElementById('metricHeatDelta').textContent = maxDelta.toFixed(4);
+
+      const eps = parseFloat(document.getElementById('inputHeatEps').value) / 100;
+      if (maxDelta < eps) {
+        document.getElementById('metricHeatStatus').textContent = 'Equilibrium Reached (✓)';
+        heatPlaying = false;
+        document.getElementById('btnHeatPlayPause').textContent = '▶ Start Diffusion';
+        playTone(880, 'sine', 0.2);
+      }
+    }
+
+    function renderHeat() {
+      const cellW = hCanvas.width / heatSize;
+      const cellH = hCanvas.height / heatSize;
+
+      for (let i = 0; i < heatSize; ++i) {
+        for (let j = 0; j < heatSize; ++j) {
+          const temp = heatGrid[i * heatSize + j];
+          const norm = Math.min(Math.max(temp / 100, 0), 1);
+          // Colormap: Deep Blue -> Cyan -> Yellow -> Red
+          let r = 0, g = 0, b = 0;
+          if (norm < 0.25) {
+            b = Math.floor(255 * (norm / 0.25));
+          } else if (norm < 0.5) {
+            b = 255;
+            g = Math.floor(255 * ((norm - 0.25) / 0.25));
+          } else if (norm < 0.75) {
+            g = 255;
+            r = Math.floor(255 * ((norm - 0.5) / 0.25));
+            b = Math.floor(255 * (1 - (norm - 0.5) / 0.25));
+          } else {
+            r = 255;
+            g = Math.floor(255 * (1 - (norm - 0.75) / 0.25));
+          }
+
+          hCtx.fillStyle = `rgb(${r},${g},${b})`;
+          hCtx.fillRect(j * cellW, i * cellH, cellW + 0.5, cellH + 0.5);
+        }
+      }
+
+      // Domain partition overlays
+      if (showPartitions) {
+        const threadCount = parseInt(document.getElementById('inputHeatThreads').value);
+        const sliceH = hCanvas.height / threadCount;
+        hCtx.strokeStyle = '#fff';
+        hCtx.lineWidth = 1.5;
+        hCtx.setLineDash([6, 4]);
+
+        for (let t = 1; t < threadCount; ++t) {
+          hCtx.beginPath();
+          hCtx.moveTo(0, t * sliceH);
+          hCtx.lineTo(hCanvas.width, t * sliceH);
+          hCtx.stroke();
+        }
+        hCtx.setLineDash([]);
+
+        // Thread Labels
+        hCtx.font = 'bold 12px monospace';
+        hCtx.fillStyle = 'rgba(0,0,0,0.7)';
+        for (let t = 0; t < threadCount; ++t) {
+          hCtx.fillRect(10, t * sliceH + 8, 85, 20);
+        }
+        hCtx.fillStyle = '#fff';
+        for (let t = 0; t < threadCount; ++t) {
+          hCtx.fillText(`Thread ${t}`, 16, t * sliceH + 22);
+        }
+      }
+
+      if (heatPlaying) {
+        stepHeat();
+        requestAnimationFrame(renderHeat);
+      }
+    }
+
+    document.getElementById('btnHeatPlayPause').addEventListener('click', () => {
+      heatPlaying = !heatPlaying;
+      document.getElementById('btnHeatPlayPause').textContent = heatPlaying ? '⏸ Pause' : '▶ Start Diffusion';
+      if (heatPlaying) renderHeat();
+    });
+
+    document.getElementById('btnHeatStep').addEventListener('click', () => {
+      stepHeat();
+      renderHeat();
+    });
+
+    document.getElementById('btnHeatReset').addEventListener('click', () => {
+      heatPlaying = false;
+      document.getElementById('btnHeatPlayPause').textContent = '▶ Start Diffusion';
+      initHeatGrid();
+      renderHeat();
+    });
+
+    document.getElementById('btnTogglePartition').addEventListener('click', (e) => {
+      showPartitions = !showPartitions;
+      e.target.textContent = `🔲 Domain Slices: ${showPartitions ? 'ON' : 'OFF'}`;
+      renderHeat();
+    });
+
+    initHeatGrid();
+    renderHeat();
+
+    /* ====================================================================
+       TAB 3: CONCURRENCY PATTERNS (BOUNDED BUFFER & PHILOSOPHERS)
+       ==================================================================== */
+    const bCanvas = document.getElementById('bufferCanvas');
+    const bCtx = bCanvas.getContext('2d');
+    const bufferSlots = 8;
+    let bufferCount = 0;
+
+    function renderBuffer() {
+      bCtx.clearRect(0, 0, bCanvas.width, bCanvas.height);
+      const slotW = 50;
+      const slotH = 50;
+      const startX = (bCanvas.width - (bufferSlots * (slotW + 10))) / 2;
+      const startY = 70;
+
+      for (let i = 0; i < bufferSlots; ++i) {
+        const x = startX + i * (slotW + 10);
+        const isOccupied = i < bufferCount;
+
+        bCtx.fillStyle = isOccupied ? 'rgba(57, 197, 187, 0.2)' : '#161b22';
+        bCtx.strokeStyle = isOccupied ? '#39c5bb' : '#30363d';
+        bCtx.lineWidth = 2;
+        bCtx.fillRect(x, startY, slotW, slotH);
+        bCtx.strokeRect(x, startY, slotW, slotH);
+
+        if (isOccupied) {
+          bCtx.fillStyle = '#39c5bb';
+          bCtx.font = 'bold 16px monospace';
+          bCtx.textAlign = 'center';
+          bCtx.textBaseline = 'middle';
+          bCtx.fillText(`#${i + 1}`, x + slotW / 2, startY + slotH / 2);
+        }
+      }
+
+      document.getElementById('valSemEmpty').textContent = bufferSlots - bufferCount;
+      document.getElementById('valSemFull').textContent = bufferCount;
+    }
+
+    document.getElementById('btnProduce').addEventListener('click', () => {
+      if (bufferCount < bufferSlots) {
+        bufferCount++;
+        renderBuffer();
+        playTone(660, 'sine', 0.05);
+      } else {
+        playTone(200, 'sawtooth', 0.08); // Buffer Full
+      }
+    });
+
+    document.getElementById('btnConsume').addEventListener('click', () => {
+      if (bufferCount > 0) {
+        bufferCount--;
+        renderBuffer();
+        playTone(520, 'sine', 0.05);
+      } else {
+        playTone(200, 'sawtooth', 0.08); // Buffer Empty
+      }
+    });
+
+    renderBuffer();
+
+    // Dining Philosophers Canvas
+    const pCanvas = document.getElementById('philosophersCanvas');
+    const pCtx = pCanvas.getContext('2d');
+    const philCount = 5;
+    const philStates = ['THINKING', 'HUNGRY', 'EATING', 'THINKING', 'EATING'];
+
+    function renderPhilosophers() {
+      pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+      const pcX = pCanvas.width / 2;
+      const pcY = pCanvas.height / 2;
+      const tableR = 75;
+
+      // Table
+      pCtx.beginPath();
+      pCtx.arc(pcX, pcY, tableR, 0, Math.PI * 2);
+      pCtx.fillStyle = '#161b22';
+      pCtx.fill();
+      pCtx.strokeStyle = '#30363d';
+      pCtx.lineWidth = 3;
+      pCtx.stroke();
+
+      for (let i = 0; i < philCount; ++i) {
+        const angle = (i * (Math.PI * 2) / philCount) - Math.PI / 2;
+        const px = pcX + (tableR + 32) * Math.cos(angle);
+        const py = pcY + (tableR + 32) * Math.sin(angle);
+
+        // State color
+        const state = philStates[i];
+        let color = '#58a6ff';
+        if (state === 'HUNGRY') color = '#d29922';
+        if (state === 'EATING') color = '#3fb950';
+
+        pCtx.beginPath();
+        pCtx.arc(px, py, 20, 0, Math.PI * 2);
+        pCtx.fillStyle = color;
+        pCtx.fill();
+
+        pCtx.fillStyle = '#fff';
+        pCtx.font = 'bold 11px monospace';
+        pCtx.textAlign = 'center';
+        pCtx.textBaseline = 'middle';
+        pCtx.fillText(`P${i}`, px, py);
+      }
+    }
+
+    document.getElementById('btnStepPhilosophers').addEventListener('click', () => {
+      const states = ['THINKING', 'HUNGRY', 'EATING'];
+      for (let i = 0; i < philCount; ++i) {
+        philStates[i] = states[Math.floor(Math.random() * states.length)];
+      }
+      renderPhilosophers();
+      playTone(550, 'triangle', 0.05);
+    });
+
+    renderPhilosophers();
+  </script>
+</body>
+</html>
