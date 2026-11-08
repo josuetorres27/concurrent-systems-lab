@@ -4,41 +4,41 @@
 [![Concurrency](https://img.shields.io/badge/Concurrency-Pthreads%20%7C%20OpenMP-orange.svg)](https://computing.llnl.gov/tutorials/pthreads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build & Tests](https://img.shields.io/badge/Tests-8%2F8%20Passing-brightgreen.svg)](Makefile)
-[![Author](https://img.shields.io/badge/Author-Josu%C3%A9%20Torres%20Sibaja-0ea5e9.svg)](https://github.com/josuetorres27)
+[![Author](https://img.shields.io/badge/Author-Josue%20Torres%20Sibaja-0ea5e9.svg)](https://github.com/josuetorres27)
 
 A modular laboratory exploring concurrent programming paradigms, parallel computing models, deadlock prevention mechanisms, and hardware-level synchronization primitives in C. Features physical simulations, classic concurrency patterns, micro-benchmarks, and an interactive 2D web visualizer.
 
 ---
 
-## 🏛️ Architecture & Project Structure
+## Architecture & Project Structure
 
 ```text
 concurrent-systems-lab/
-├── Makefile                        # Root orchestrator: builds & runs all modules
-├── LICENSE                         # MIT License
-├── README.md                       # Main laboratory documentation
-├── docs/                           # Theoretical and algorithmic specifications
-│   ├── Concurrency_Patterns.md     # In-depth analysis of classic patterns
-│   ├── Heat_Diffusion_Theory.md    # PDE discretization & domain decomposition
-│   └── Roundabout_Specification.md # Coffman conditions & semaphore transit
-├── patterns/                       # Core concurrency patterns & synchronization
-│   ├── bounded-buffer/             # Producer-Consumer with counting semaphores
-│   ├── dining-philosophers/        # Dijkstra resource hierarchy (deadlock-free)
-│   ├── molecule-assembler/         # H2O multi-thread rendezvous barrier
-│   └── synchronization-bench/      # Benchmark: Atomics vs Spinlocks vs Mutexes vs Semaphores
-├── simulations/                    # Multi-threaded numerical & physical models
-│   ├── heat-diffusion/             # 2D Finite Difference Heat Equation solver
-│   │   ├── serial/                 # Baseline single-threaded implementation
-│   │   ├── pthreads/               # 1D row slicing domain decomposition + barriers
-│   │   └── openmp/                 # Work-sharing constructs & SIMD loop reduction
-│   └── roundabout/                 # Traffic simulator with POSIX semaphores
-└── web/                            # Interactive multi-tab 2D visualizer
-    └── index.html                  # HTML5 Canvas + Web Audio API synthesizer
+├── Makefile                           # Root orchestrator: builds & runs all modules
+├── LICENSE                            # MIT License
+├── README.md                          # Main laboratory documentation
+├── docs/                              # Theoretical and algorithmic specifications
+│   ├── Concurrency_Patterns.md        # In-depth analysis of classic patterns
+│   ├── Heat_Diffusion_Theory.md       # PDE discretization & domain decomposition
+│   └── Roundabout_Specification.md    # Coffman conditions & semaphore transit
+├── patterns/                          # Core concurrency patterns & synchronization
+│   ├── bounded-buffer/                # Producer-Consumer with counting semaphores
+│   ├── dining-philosophers/           # Dijkstra resource hierarchy (deadlock-free)
+│   ├── molecule-assembler/            # H2O multi-thread rendezvous barrier
+│   └── synchronization-bench/         # Benchmark: Atomics vs Spinlocks vs Mutexes vs Semaphores
+├── simulations/                       # Multi-threaded numerical & physical models
+│   ├── heat-diffusion/                # 2D Finite Difference Heat Equation solver
+│   │   ├── serial/                    # Baseline single-threaded implementation
+│   │   ├── pthreads/                  # 1D row slicing domain decomposition + barriers
+│   │   └── openmp/                    # Work-sharing constructs & SIMD loop reduction
+│   └── roundabout/                    # Traffic simulator with POSIX semaphores
+└── web/                               # Interactive multi-tab 2D visualizer
+    └── index.html                     # HTML5 Canvas + Web Audio API synthesizer
 ```
 
 ---
 
-## 🔬 Modules Overview
+## Modules Overview
 
 ### 1. Traffic Roundabout Simulation (`simulations/roundabout/`)
 - **Focus:** Preventing deadlocks in cyclic topologies with shared limited-capacity sectors.
@@ -66,7 +66,7 @@ concurrent-systems-lab/
 
 ---
 
-## ⚡ Quick Start & Compilation
+## Quick Start & Compilation
 
 ### Prerequisites
 - GCC / Clang with C99, C11, POSIX Threads (`-pthread`), and OpenMP (`-fopenmp`) support.
@@ -106,7 +106,7 @@ make test
 
 ---
 
-## 📊 Benchmark Preview
+## Benchmark Preview
 
 Representative results on an 8-core / 16-thread CPU (20,000,000 total increments):
 
@@ -119,7 +119,7 @@ Representative results on an 8-core / 16-thread CPU (20,000,000 total increments
 
 ---
 
-## 🎨 Interactive 2D Web Visualizer
+## Interactive 2D Web Visualizer
 
 The visualizer provides live simulations of the underlying models in any modern browser without external dependencies:
 
@@ -138,7 +138,7 @@ start web/index.html     # Windows PowerShell
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Developed with precision by **Josué Torres Sibaja**.
+Developed with precision by **Josue Torres Sibaja**.
