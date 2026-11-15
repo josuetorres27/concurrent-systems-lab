@@ -1,58 +1,62 @@
 # Classic Concurrency Patterns & Benchmarking
 
 ## 1. Overview
-This module demonstrates fundamental synchronization patterns, lock-free atomics, and deadlocks mitigation mechanisms in systems programming using POSIX Threads (`pthreads`), C11 Atomics, and POSIX Realtime Extensions.
+This module demonstrates classic synchronization patterns and compares the cost of low-level synchronization primitives, using POSIX Threads (`pthreads`), POSIX semaphores and C11 atomics.
 
 ---
 
 ## 2. Patterns Catalog
 
 ### 2.1 Bounded Buffer (Producer-Consumer)
-- **Problem Statement:** Multiple producer threads generate data tokens into a fixed-size ring buffer while multiple consumer threads extract them. Producers must block when full; consumers must block when empty.
+- **Problem Statement:** Two producer threads insert 25 items each into a ring buffer of 8 slots (`BUFFER_CAPACITY`), while two consumer threads remove 25 items each. Producers must block when the buffer is full; consumers must block when it is empty.
 - **Synchronization Primitives:**
-  - `sem_t sem_empty`: Initialized to `BUFFER_CAPACITY` (tracks empty slots).
-  - `sem_t sem_full`: Initialized to `0` (tracks filled items).
-  - `pthread_mutex_t mutex`: Protects ring buffer indices (`head`, `tail`, `count`).
-- **Liveness Guarantee:** Using counting semaphores eliminates busy-waiting and prevents buffer overrun/underrun race conditions.
+  - `sem_t sem_empty`: Initialized to `BUFFER_CAPACITY` (counts empty slots).
+  - `sem_t sem_full`: Initialized to `0` (counts filled slots).
+  - `pthread_mutex_t mutex`: Protects the ring buffer indices and size (`head`, `tail`, `count`).
+- **Liveness Guarantee:** Threads block on the counting semaphores instead of busy-waiting, and the mutex prevents two threads from updating the same slot or index at once.
 
-```
-Producers ---> [ sem_wait(&empty) ] ---> [ lock(&mutex) ] ---> [ Insert Item ] ---> [ unlock ] ---> [ sem_post(&full) ]
-Consumers <--- [ sem_wait(&full) ]  <--- [ lock(&mutex) ] <--- [ Remove Item ] <--- [ unlock ] <--- [ sem_post(&empty) ]
+```text
+Producers: sem_wait(&sem_empty) -> lock(&mutex) -> insert item -> unlock(&mutex) -> sem_post(&sem_full)
+Consumers: sem_wait(&sem_full)  -> lock(&mutex) -> remove item -> unlock(&mutex) -> sem_post(&sem_empty)
 ```
 
 ---
 
 ### 2.2 Dining Philosophers (Dijkstra Resource Hierarchy)
-- **Problem Statement:** $N$ philosophers sit around a circular table. Each philosopher alternates between thinking and eating. Eating requires acquiring both adjacent chopsticks (shared mutexes).
-- **Deadlock Condition:** If every philosopher simultaneously picks up their left chopstick, a circular wait is established:
+- **Problem Statement:** 5 philosophers (`NUM_PHILOSOPHERS`) sit around a circular table and each eats 5 times. Eating requires both adjacent forks, which are mutexes (`pthread_mutex_t forks[5]`). Philosopher $i$ has fork $i$ on the left and fork $(i+1) \bmod N$ on the right.
+- **Deadlock Condition:** If every philosopher simultaneously picks up their left fork, a circular wait is established:
   $$P_0 \to C_1 \land P_1 \to C_2 \land \dots \land P_{N-1} \to C_0$$
 - **Solution:** **Resource Ordering (Dijkstra's Hierarchy)**.
-  Every philosopher always requests the lower-numbered chopstick first:
+  Every philosopher always requests the lower-numbered fork first:
   ```c
-  int first  = (left < right) ? left : right;
-  int second = (left < right) ? right : left;
-  pthread_mutex_lock(&forks[first]);
-  pthread_mutex_lock(&forks[second]);
+  int first_fork  = (left_fork < right_fork) ? left_fork : right_fork;
+  int second_fork = (left_fork < right_fork) ? right_fork : left_fork;
+  pthread_mutex_lock(&forks[first_fork]);
+  pthread_mutex_lock(&forks[second_fork]);
   ```
-  Because philosopher $N-1$ requests chopstick $0$ before chopstick $N-1$, the symmetry is broken and circular wait is mathematically impossible.
+  Because philosopher $N-1$ requests fork $0$ before fork $N-1$, the symmetry is broken and a circular wait cannot form.
 
 ---
 
 ### 2.3 H2O Molecule Assembler (Thread Rendezvous)
-- **Problem Statement:** Hydrogen and Oxygen threads arrive asynchronously. They must barrier-synchronize and bond in precise stoichiometric proportions: exactly $2\text{H} + 1\text{O} \to \text{H}_2\text{O}$.
-- **Synchronization Mechanism:**
-  - Protected state tracking `hydrogen_count` and `oxygen_count`.
-  - When $2\text{H}$ and $1\text{O}$ are available, the completing thread signals semaphores `sem_post(&hydro_sem)` twice and `sem_post(&oxy_sem)` once.
-  - All three threads synchronize on a reusable rendezvous barrier (`pthread_barrier_t`) before and after bonding.
+- **Problem Statement:** 20 hydrogen threads and 10 oxygen threads arrive asynchronously. They must be grouped into molecules of exactly $2\text{H} + 1\text{O}$, and the three atoms of each molecule must meet before bonding.
+- **Synchronization Mechanism** (as in Downey's *The Little Book of Semaphores*):
+  - `sem_t admission` (binary semaphore, initialized to 1) protects `hydrogen_count` and `oxygen_count`, the numbers of atoms waiting.
+  - Each arriving atom takes `admission` and increments its count. If at least 2 hydrogens and 1 oxygen are waiting, it releases one molecule: `sem_post(&sem_h)` twice and `sem_post(&sem_o)` once, and it keeps `admission`. Otherwise it releases `admission`.
+  - Every atom then waits on its queue (`sem_h` or `sem_o`), and the three released atoms meet at a `pthread_barrier_t` initialized to 3.
+  - After the barrier, the oxygen increments `molecules_formed`, prints the molecule and releases `admission`.
+- **Why the Groups Are Correct:** `admission` stays held from the moment a molecule is released until its oxygen has passed the barrier, so the atoms of the next molecule cannot reach the barrier early. `admission` is a semaphore rather than a mutex because it is released by a different thread (the oxygen) than the one that took it. Each atom prints the number of the molecule it joined.
 
 ---
 
 ### 2.4 Low-Level Synchronization Primitives Benchmark
-A micro-benchmark evaluating throughput and lock contention across four synchronization techniques incrementing a shared counter under $N$ worker threads:
+A micro-benchmark in which $N$ threads (default 4, maximum 64) each increment a shared counter 1,000,000 times, protected by one of four mechanisms:
 
-| Mechanism | Description | Contention Behavior | Typical Throughput |
-|---|---|---|---|
-| **C11 Atomic** (`atomic_fetch_add`) | Hardware-level lock-free `LOCK XADD` | Hardware bus arbitration / MESI cache line bouncing | **Extremely High** |
-| **Pthread Spinlock** (`pthread_spinlock_t`) | Busy-wait loop in user space | Efficient for ultra-short critical sections; burns CPU cycles | **High** |
-| **Pthread Mutex** (`pthread_mutex_t`) | Adaptive hybrid (spin-then-futex sleep) | Minimal CPU waste during long stalls; OS context switch cost | **Moderate** |
-| **POSIX Semaphore** (`sem_t`) | Kernel-level counter with wait queue | System call overhead per decrement/increment | **Baseline** |
+| Mechanism | Implementation | Behavior Under Contention |
+| :--- | :--- | :--- |
+| **C11 Atomic** | `atomic_fetch_add_explicit(..., memory_order_relaxed)` on an `atomic_llong` | A single atomic read-modify-write instruction; no lock. Threads still compete for the counter's cache line. |
+| **POSIX Spinlock** | `pthread_spinlock_t` | Waiting threads spin in user space, consuming CPU until the lock is free. |
+| **Pthread Mutex** | `pthread_mutex_t` with `PTHREAD_MUTEX_INITIALIZER` (default type) | Uncontended operations stay in user space; waiting threads sleep in the kernel (futex) until woken. |
+| **POSIX Binary Semaphore** | `sem_t` initialized to 1 and used as a lock | Like the mutex, futex-based: uncontended operations stay in user space and waiting threads sleep in the kernel. |
+
+The README reports one run with 4 threads on Ubuntu 22.04 under WSL2: the atomic counter was the fastest and the semaphore the slowest, and the mutex was faster than the spinlock. The order of the spinlock and the mutex in particular depends on the hardware, the operating system and the scheduler.
