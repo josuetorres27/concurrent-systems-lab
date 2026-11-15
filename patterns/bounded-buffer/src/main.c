@@ -11,6 +11,7 @@
  * Licensed under the MIT License.
  */
 
+#define _DEFAULT_SOURCE  /* usleep */
 #define _POSIX_C_SOURCE 199309L
 
 #include <stdio.h>
