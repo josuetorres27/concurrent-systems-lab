@@ -32,7 +32,6 @@ typedef struct {
   sem_t sem_empty;
   sem_t sem_full;
   pthread_mutex_t mutex;
-  int producer_done;
 } BoundedBuffer;
 
 BoundedBuffer g_bb;
@@ -101,7 +100,6 @@ int main() {
   g_bb.head = 0;
   g_bb.tail = 0;
   g_bb.count = 0;
-  g_bb.producer_done = 0;
 
   sem_init(&g_bb.sem_empty, 0, BUFFER_CAPACITY);
   sem_init(&g_bb.sem_full, 0, 0);
