@@ -20,7 +20,7 @@ A modular lab for concurrent and parallel programming in C11 with POSIX Threads 
 
 ### 2D Heat Diffusion Solver (`simulations/heat-diffusion/`)
 
-- **Focus:** Iterative 5-point finite-difference stencil on a 2D plate until the maximum per-cell change drops below `epsilon` (or 25,000 iterations).
+- **Focus:** Iterative 5-point finite-difference stencil on a 2D plate until the maximum per-cell change is at most `epsilon` (or 25,000 iterations).
 - **Implementations:**
   - **Serial:** Single-threaded baseline. All three versions converge in the same number of iterations to the same final delta for the same inputs.
   - **POSIX Threads:** Explicit 1D row domain decomposition with double buffering and `pthread_barrier_t` synchronization. Thread 0 aggregates the per-thread deltas and swaps the buffers between two barriers.
@@ -31,7 +31,7 @@ A modular lab for concurrent and parallel programming in C11 with POSIX Threads 
 
 - **Bounded Buffer:** 8-slot ring buffer shared by 2 producers and 2 consumers (50 items), using two counting semaphores (`sem_empty`, `sem_full`) plus a mutex.
 - **Dining Philosophers:** 5 philosophers, 5 rounds each. Every philosopher locks the lower-numbered fork first (resource ordering), which breaks the circular-wait condition without a central coordinator.
-- **H2O Molecule Assembler:** Hydrogen and oxygen threads form 10 water molecules ($2\text{H} + 1\text{O}$) using semaphores and a reusable `pthread_barrier_t` with a count of 3.
+- **H2O Molecule Assembler:** Hydrogen and oxygen threads form 10 water molecules ($2\text{H} + 1\text{O}$). A binary admission semaphore releases one molecule at a time from the hydrogen and oxygen queues (`sem_h`, `sem_o`), and its three atoms meet at a reusable `pthread_barrier_t` with a count of 3.
 - **Synchronization Benchmark:** Each thread increments a shared counter 1,000,000 times under high contention. It compares C11 atomics (`atomic_fetch_add_explicit`, relaxed ordering), POSIX spinlocks (`pthread_spinlock_t`), POSIX mutexes (`pthread_mutex_t`) and a POSIX semaphore used as a binary lock (`sem_t` initialized to 1).
 - **Details:** See [docs/Concurrency_Patterns.md](docs/Concurrency_Patterns.md).
 
@@ -150,7 +150,9 @@ All binaries are written to the module's `bin/` directory. Arguments are positio
 | `patterns/dining-philosophers/bin/dining_philosophers` | No arguments |
 | `patterns/molecule-assembler/bin/molecule_assembler` | No arguments |
 
-Roundabout notes: `min_ms` / `max_ms` set the random transit delay per quadrant and `capacity` sets the vehicles allowed per quadrant. Positional numbers must come before `-v` or `-f`. Without `-f`, 15 vehicles with random entry and exit points are generated. With `-f`, the file lists one vehicle per line as `ENTRY EXIT` using `N`, `E`, `S`, `W`.
+Roundabout notes: `min_ms` / `max_ms` set the random transit delay per quadrant and `capacity` sets the vehicles allowed per quadrant. Flags may appear anywhere among the numbers; the capacity must be at least 1 and `max_ms` must not be smaller than `min_ms`. Without `-f`, 15 vehicles with random entry and exit points are generated. With `-f`, the file lists one vehicle per line as `ENTRY EXIT` using `N`, `E`, `S`, `W`.
+
+Heat diffusion notes: `rows` and `cols` must be between 3 and 100,000, and the thread count must be at least 1.
 
 Examples:
 
