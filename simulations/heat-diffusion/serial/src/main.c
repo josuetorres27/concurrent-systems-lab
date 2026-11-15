@@ -28,10 +28,17 @@ typedef struct {
 
 HeatPlate* create_plate(long long rows, long long cols) {
   HeatPlate* plate = (HeatPlate*) malloc(sizeof(HeatPlate));
+  if (!plate) return NULL;
   plate->rows = rows;
   plate->cols = cols;
   plate->current = (double*) calloc(rows * cols, sizeof(double));
   plate->next    = (double*) calloc(rows * cols, sizeof(double));
+  if (!plate->current || !plate->next) {
+    free(plate->current);
+    free(plate->next);
+    free(plate);
+    return NULL;
+  }
 
   /* Set hot top boundary (100 C) and cool bottom (0 C) */
   for (long long j = 0; j < cols; ++j) {
@@ -70,6 +77,11 @@ int main(int argc, char* argv[]) {
   if (argc >= 3) cols = atoll(argv[2]);
   if (argc >= 4) epsilon = atof(argv[3]);
 
+  if (rows < 3 || cols < 3 || rows > 100000 || cols > 100000) {
+    fprintf(stderr, "Error: rows and cols must be between 3 and 100000.\n");
+    return EXIT_FAILURE;
+  }
+
   printf("====================================================================\n");
   printf("     2D HEAT DIFFUSION SIMULATION - SEQUENTIAL BASELINE (SERIAL)    \n");
   printf("====================================================================\n");
@@ -79,6 +91,10 @@ int main(int argc, char* argv[]) {
   printf("====================================================================\n\n");
 
   HeatPlate* plate = create_plate(rows, cols);
+  if (!plate) {
+    fprintf(stderr, "Error: Not enough memory for a %lld x %lld plate.\n", rows, cols);
+    return EXIT_FAILURE;
+  }
   double r = (delta_t * alpha) / (h * h);
 
   struct timespec start, end;

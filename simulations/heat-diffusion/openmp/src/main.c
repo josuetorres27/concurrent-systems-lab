@@ -31,6 +31,15 @@ int main(int argc, char* argv[]) {
   if (argc >= 4) thread_count = atoi(argv[3]);
   if (argc >= 5) epsilon = atof(argv[4]);
 
+  if (rows < 3 || cols < 3 || rows > 100000 || cols > 100000) {
+    fprintf(stderr, "Error: rows and cols must be between 3 and 100000.\n");
+    return EXIT_FAILURE;
+  }
+  if (thread_count < 1) {
+    fprintf(stderr, "Error: The thread count must be at least 1.\n");
+    return EXIT_FAILURE;
+  }
+
   omp_set_num_threads(thread_count);
 
   printf("====================================================================\n");
@@ -43,6 +52,12 @@ int main(int argc, char* argv[]) {
 
   double* current = (double*) calloc(rows * cols, sizeof(double));
   double* next    = (double*) calloc(rows * cols, sizeof(double));
+  if (!current || !next) {
+    fprintf(stderr, "Error: Not enough memory for a %lld x %lld plate.\n", rows, cols);
+    free(current);
+    free(next);
+    return EXIT_FAILURE;
+  }
   double r = (delta_t * alpha) / (h * h);
 
   /* Set boundary temperatures */

@@ -129,6 +129,15 @@ int main(int argc, char* argv[]) {
   if (argc >= 4) thread_count = atoi(argv[3]);
   if (argc >= 5) epsilon = atof(argv[4]);
 
+  if (rows < 3 || cols < 3 || rows > 100000 || cols > 100000) {
+    fprintf(stderr, "Error: rows and cols must be between 3 and 100000.\n");
+    return EXIT_FAILURE;
+  }
+  if (thread_count < 1) {
+    fprintf(stderr, "Error: The thread count must be at least 1.\n");
+    return EXIT_FAILURE;
+  }
+
   printf("====================================================================\n");
   printf("     2D HEAT DIFFUSION SIMULATION - POSIX THREADS DOMAIN DECOMP    \n");
   printf("====================================================================\n");
@@ -151,7 +160,14 @@ int main(int argc, char* argv[]) {
   s.converged = 0;
   s.completed_iterations = 0;
 
-  pthread_barrier_init(&s.barrier, NULL, thread_count);
+  if (!s.current || !s.next || !s.thread_max_deltas) {
+    fprintf(stderr, "Error: Not enough memory for a %lld x %lld plate.\n", rows, cols);
+    return EXIT_FAILURE;
+  }
+  if (pthread_barrier_init(&s.barrier, NULL, thread_count) != 0) {
+    fprintf(stderr, "Error: Could not create a barrier for %d threads.\n", thread_count);
+    return EXIT_FAILURE;
+  }
 
   /* Set boundary temperatures */
   for (long long j = 0; j < cols; ++j) {
@@ -168,6 +184,10 @@ int main(int argc, char* argv[]) {
   }
 
   pthread_t* threads = (pthread_t*) malloc(thread_count * sizeof(pthread_t));
+  if (!threads) {
+    fprintf(stderr, "Error: Not enough memory for %d threads.\n", thread_count);
+    return EXIT_FAILURE;
+  }
   long long internal_rows = rows - 2;
   long long rows_per_thread = internal_rows / thread_count;
   long long remainder = internal_rows % thread_count;
@@ -185,7 +205,12 @@ int main(int argc, char* argv[]) {
     args->shared    = &s;
     current_row    += assigned;
 
-    pthread_create(&threads[t], NULL, worker_thread, args);
+    if (!args || pthread_create(&threads[t], NULL, worker_thread, args) != 0) {
+      /* The started workers would wait forever at a barrier sized for
+         thread_count threads, so stop the whole process */
+      fprintf(stderr, "Error: Could only start %d of %d worker threads.\n", t, thread_count);
+      exit(EXIT_FAILURE);
+    }
   }
 
   for (int t = 0; t < thread_count; ++t) {
