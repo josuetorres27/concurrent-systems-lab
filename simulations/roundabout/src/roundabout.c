@@ -36,7 +36,7 @@ char index_to_direction(int index) {
 
 long long time_since_start(struct timespec start_time) {
   struct timespec current_time;
-  clock_gettime(CLOCK_REALTIME, &current_time);
+  clock_gettime(CLOCK_MONOTONIC, &current_time);
   return (current_time.tv_sec - start_time.tv_sec) * 1000000000LL +
          (current_time.tv_nsec - start_time.tv_nsec);
 }
@@ -85,8 +85,11 @@ void* vehicle_thread(void* arg) {
     return NULL;
   }
 
+  /* Per-thread seed: rand() shares hidden state between threads */
+  unsigned int seed = (unsigned int) time(NULL) ^ (unsigned int) (vehicle_id * 2654435761u);
+
   struct timespec start_time;
-  clock_gettime(CLOCK_REALTIME, &start_time);
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
 
   char full_path[] = {'N', 'W', 'S', 'E'};
   int cycle_size = 4;
@@ -120,7 +123,7 @@ void* vehicle_thread(void* arg) {
     if (sim_state->max_time > 0) {
       int sleep_time = sim_state->min_time;
       if (sim_state->max_time > sim_state->min_time) {
-        sleep_time += rand() % (sim_state->max_time - sim_state->min_time + 1);
+        sleep_time += rand_r(&seed) % (sim_state->max_time - sim_state->min_time + 1);
       }
       usleep(sleep_time * 1000);
     }
