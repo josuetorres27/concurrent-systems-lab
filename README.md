@@ -63,26 +63,26 @@ One run of `sync_bench 4` (4 threads × 1,000,000 increments = 4,000,000 operati
 
 ```text
 concurrent-systems-lab/
-├── Makefile                           # Root orchestrator: builds all modules, runs smoke tests
-├── LICENSE                            # MIT License
-├── README.md                          # Main laboratory documentation
-├── docs/                              # Theoretical and algorithmic notes
-│   ├── Concurrency_Patterns.md        # Analysis of the classic patterns
-│   ├── Heat_Diffusion_Theory.md       # PDE discretization & domain decomposition
-│   └── Roundabout_Specification.md    # Coffman conditions & semaphore transit
-├── patterns/                          # Classic concurrency patterns & synchronization
-│   ├── bounded-buffer/                # Producer-consumer with semaphores + mutex
-│   ├── dining-philosophers/           # Resource ordering (deadlock-free)
-│   ├── molecule-assembler/            # H2O rendezvous with semaphores + barrier
-│   └── synchronization-bench/         # Benchmark: atomics vs spinlock vs mutex vs semaphore
-├── simulations/                       # Multi-threaded numerical & traffic models
-│   ├── heat-diffusion/                # 2D finite-difference heat equation solver
-│   │   ├── serial/                    # Single-threaded baseline
-│   │   ├── pthreads/                  # 1D row domain decomposition + barriers
-│   │   └── openmp/                    # parallel for + max reduction
-│   └── roundabout/                    # Traffic simulator with POSIX semaphores
-└── web/                               # Interactive multi-tab 2D visualizer
-    └── index.html                     # HTML5 Canvas + Web Audio API
+├── Makefile                        # Root orchestrator: builds all modules, runs smoke tests
+├── LICENSE                         # MIT License
+├── README.md                       # Main laboratory documentation
+├── docs/                           # Theoretical and algorithmic notes
+│   ├── Concurrency_Patterns.md     # Analysis of the classic patterns
+│   ├── Heat_Diffusion_Theory.md    # PDE discretization & domain decomposition
+│   └── Roundabout_Specification.md # Coffman conditions & semaphore transit
+├── patterns/                       # Classic concurrency patterns & synchronization
+│   ├── bounded-buffer/             # Producer-consumer with semaphores + mutex
+│   ├── dining-philosophers/        # Resource ordering (deadlock-free)
+│   ├── molecule-assembler/         # H2O rendezvous with semaphores + barrier
+│   └── synchronization-bench/      # Benchmark: atomics vs spinlock vs mutex vs semaphore
+├── simulations/                    # Multi-threaded numerical & traffic models
+│   ├── heat-diffusion/             # 2D finite-difference heat equation solver
+│   │   ├── serial/                 # Single-threaded baseline
+│   │   ├── pthreads/               # 1D row domain decomposition + barriers
+│   │   └── openmp/                 # parallel for + max reduction
+│   └── roundabout/                 # Traffic simulator with POSIX semaphores
+└── web/                            # Interactive multi-tab 2D visualizer
+    └── index.html                  # HTML5 Canvas + Web Audio API
 ```
 
 ---
