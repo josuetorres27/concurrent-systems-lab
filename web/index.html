@@ -314,9 +314,9 @@
       <h1>Concurrent Systems Laboratory</h1>
     </div>
     <nav class="nav-tabs">
-      <button class="nav-tab active" data-tab="tab-roundabout">🚦 Roundabout Concurrency</button>
-      <button class="nav-tab" data-tab="tab-heat">🌡️ 2D Heat Diffusion</button>
-      <button class="nav-tab" data-tab="tab-patterns">⚙️ Concurrency Patterns</button>
+      <button class="nav-tab active" data-tab="tab-roundabout">Roundabout Concurrency</button>
+      <button class="nav-tab" data-tab="tab-heat">2D Heat Diffusion</button>
+      <button class="nav-tab" data-tab="tab-patterns">Concurrency Patterns</button>
     </nav>
   </header>
 
@@ -324,7 +324,7 @@
     <!-- TAB 1: ROUNDABOUT SIMULATION -->
     <section id="tab-roundabout" class="tab-content active">
       <div id="deadlockBanner" class="deadlock-banner">
-        ⚠️ DEADLOCK DETECTED! Circular Wait Condition satisfied (N ➔ W ➔ S ➔ E ➔ N). Semaphores disabled!
+        DEADLOCK DETECTED! Circular Wait Condition satisfied (N ➔ W ➔ S ➔ E ➔ N). Semaphores disabled!
       </div>
 
       <div class="grid-2">
@@ -335,9 +335,9 @@
               <span id="syncModeBadge" class="stat-badge green">● POSIX Semaphores (Safe)</span>
             </div>
             <div class="btn-group">
-              <button id="btnSpawnCar" class="btn">🚗 Spawn Vehicle</button>
-              <button id="btnToggleSync" class="btn">⚡ Toggle Sync Mode</button>
-              <button id="btnResetRoundabout" class="btn">🔄 Reset</button>
+              <button id="btnSpawnCar" class="btn">Spawn Vehicle</button>
+              <button id="btnToggleSync" class="btn">Toggle Sync Mode</button>
+              <button id="btnResetRoundabout" class="btn">Reset</button>
             </div>
           </div>
 
@@ -348,7 +348,7 @@
 
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">⚙️ Control & Metrics</div>
+            <div class="panel-title">Control & Metrics</div>
           </div>
 
           <div class="controls-group">
@@ -369,7 +369,7 @@
 
             <div class="control-item">
               <label>Audio Feedback (Web Audio API):</label>
-              <button id="btnToggleAudio" class="btn">🔊 Audio SFX: ON</button>
+              <button id="btnToggleAudio" class="btn">Audio SFX: ON</button>
             </div>
 
             <div style="margin-top: 1rem;">
@@ -401,9 +401,9 @@
               <span id="heatIterBadge" class="stat-badge cyan">Iter: 0</span>
             </div>
             <div class="btn-group">
-              <button id="btnHeatPlayPause" class="btn btn-primary">▶ Start Diffusion</button>
-              <button id="btnHeatStep" class="btn">⏯ Step</button>
-              <button id="btnHeatReset" class="btn">🔄 Reset</button>
+              <button id="btnHeatPlayPause" class="btn btn-primary">Start Diffusion</button>
+              <button id="btnHeatStep" class="btn">Step</button>
+              <button id="btnHeatReset" class="btn">Reset</button>
             </div>
           </div>
 
@@ -414,7 +414,7 @@
 
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">🌡️ Domain & Convergence</div>
+            <div class="panel-title">Domain & Convergence</div>
           </div>
 
           <div class="controls-group">
@@ -435,7 +435,7 @@
 
             <div class="control-item">
               <label>Show Thread Partitioning:</label>
-              <button id="btnTogglePartition" class="btn">🔲 Domain Slices: ON</button>
+              <button id="btnTogglePartition" class="btn">Domain Slices: ON</button>
             </div>
 
             <div style="margin-top: 1rem;">
@@ -462,10 +462,10 @@
         <!-- Pattern 1: Bounded Buffer -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">📦 Bounded Buffer (Producer-Consumer)</div>
+            <div class="panel-title">Bounded Buffer (Producer-Consumer)</div>
             <div class="btn-group">
-              <button id="btnProduce" class="btn">➕ Produce Item</button>
-              <button id="btnConsume" class="btn">➖ Consume Item</button>
+              <button id="btnProduce" class="btn">Produce Item</button>
+              <button id="btnConsume" class="btn">Consume Item</button>
             </div>
           </div>
 
@@ -481,8 +481,8 @@
         <!-- Pattern 2: Dining Philosophers -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">🍝 Dining Philosophers (Dijkstra Resource Order)</div>
-            <button id="btnStepPhilosophers" class="btn">🎲 Toggle State</button>
+            <div class="panel-title">Dining Philosophers (Dijkstra Resource Order)</div>
+            <button id="btnStepPhilosophers" class="btn">Toggle State</button>
           </div>
 
           <div class="canvas-container" style="padding: 1.5rem 1rem;">
@@ -528,7 +528,7 @@
 
     document.getElementById('btnToggleAudio').addEventListener('click', (e) => {
       sfxEnabled = !sfxEnabled;
-      e.target.textContent = `🔊 Audio SFX: ${sfxEnabled ? 'ON' : 'OFF'}`;
+      e.target.textContent = `Audio SFX: ${sfxEnabled ? 'ON' : 'OFF'}`;
       if (sfxEnabled) playTone(440, 'triangle', 0.1, 0.05);
     });
 
@@ -888,7 +888,7 @@
       if (maxDelta < eps) {
         document.getElementById('metricHeatStatus').textContent = 'Equilibrium Reached (✓)';
         heatPlaying = false;
-        document.getElementById('btnHeatPlayPause').textContent = '▶ Start Diffusion';
+        document.getElementById('btnHeatPlayPause').textContent = 'Start Diffusion';
         playTone(880, 'sine', 0.2);
       }
     }
@@ -958,7 +958,7 @@
 
     document.getElementById('btnHeatPlayPause').addEventListener('click', () => {
       heatPlaying = !heatPlaying;
-      document.getElementById('btnHeatPlayPause').textContent = heatPlaying ? '⏸ Pause' : '▶ Start Diffusion';
+      document.getElementById('btnHeatPlayPause').textContent = heatPlaying ? 'Pause' : 'Start Diffusion';
       if (heatPlaying) renderHeat();
     });
 
@@ -969,14 +969,14 @@
 
     document.getElementById('btnHeatReset').addEventListener('click', () => {
       heatPlaying = false;
-      document.getElementById('btnHeatPlayPause').textContent = '▶ Start Diffusion';
+      document.getElementById('btnHeatPlayPause').textContent = 'Start Diffusion';
       initHeatGrid();
       renderHeat();
     });
 
     document.getElementById('btnTogglePartition').addEventListener('click', (e) => {
       showPartitions = !showPartitions;
-      e.target.textContent = `🔲 Domain Slices: ${showPartitions ? 'ON' : 'OFF'}`;
+      e.target.textContent = `Domain Slices: ${showPartitions ? 'ON' : 'OFF'}`;
       renderHeat();
     });
 
