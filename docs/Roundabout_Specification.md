@@ -1,99 +1,145 @@
 # Roundabout Traffic Simulation & Deadlock Avoidance
 
 ## 1. Overview
-The Roundabout Simulator models real-world circular junction dynamics where multiple concurrent vehicles (threads) request access to sequential quadrants (critical shared resources). Without synchronization or priority arbitration, circular wait conditions inevitably lead to system-wide gridlock (deadlock).
+The Roundabout Simulator models a circular junction with four entry/exit points. Each vehicle is a POSIX thread, and the roundabout is a ring of four segments, one per point, each with a limited capacity (3 vehicles by default). Vehicles always travel the ring in the same direction:
 
+```text
+                     N (segment 0)
+                   /               \
+                  v                 ^
+     W (segment 3)                   E (segment 1)
+                  v                 ^
+                   \               /
+                     S (segment 2)
+
+          Direction of travel: N -> W -> S -> E -> N
 ```
-                 North Entry / Exit
-                       [ N ]
-                         |
-                 +---------------+
-                 |  Quadrant 0   |
-          [ W ]--| (North-West)  |--[ E ]
-                 |               |
-                 |  Quadrant 1   |
-          West   | (South-West)  |   East
-          Entry/ |               |   Entry/
-          Exit   |  Quadrant 2   |   Exit
-                 | (South-East)  |
-                 |               |
-                 |  Quadrant 3   |
-                 | (North-East)  |
-                 +---------------+
-                         |
-                       [ S ]
-                 South Entry / Exit
-```
+
+A vehicle entering at `N` with exit `S` passes through segments `N` and `W` and leaves at `S`. A vehicle whose exit equals its entry goes around the whole ring once.
 
 ---
 
-## 2. Theoretical Concurrency Model
+## 2. Concurrency Model
 
-### 2.1 Coffman Conditions Analysis
-A deadlock in resource allocation requires four simultaneous conditions:
-1. **Mutual Exclusion:** Each quadrant within the roundabout has a strictly finite vehicle capacity ($K \ge 1$). A vehicle holds exclusive occupancy of a slot within a quadrant.
-2. **Hold and Wait:** A vehicle occupying quadrant $Q_i$ requests admission to quadrant $Q_{(i+1) \pmod 4}$ before relinquishing $Q_i$.
-3. **No Preemption:** Vehicles cannot be forcefully ejected or teleported out of a quadrant while transitioning.
-4. **Circular Wait:** A closed cycle exists such that:
-   $$V_0 \to Q_1 \land V_1 \to Q_2 \land V_2 \to Q_3 \land V_3 \to Q_0$$
-   where $V_k$ holds $Q_k$ and waits for $Q_{(k+1) \pmod 4}$.
+### 2.1 Segment Capacity
+Each segment is guarded by its own POSIX counting semaphore, initialized to the segment capacity (`src/roundabout.c`, `init_simulation`):
 
-### 2.2 Prevention and Avoidance Strategies
-
-#### A. Semaphore Capacity Regulation
-Each quadrant is guarded by a POSIX counting semaphore:
 ```c
-sem_t quadrant_sem[4];
-sem_init(&quadrant_sem[i], 0, QUADRANT_CAPACITY);
+for (int i = 0; i < NUM_SEGMENTS; i++) {
+  sim_state->segments[i].segment_capacity = segment_capacity;
+  sem_init(&sim_state->segments[i].capacity, 0, segment_capacity);
+}
 ```
 
-#### B. Global Roundabout Invariant (Breaking Circular Wait)
-To mathematically prevent a cyclic dependency among full quadrants, the total number of vehicles concurrently traversing the roundabout is bounded by:
-$$N_{\text{max\_total}} = \sum_{i=0}^3 C_i - 1$$
-By guaranteeing at least one vacant slot across the ring topology at all times via a master entry semaphore (`sem_t entry_permit`), the cycle cannot close, guaranteeing liveness (progress).
+To cross a segment, a vehicle waits on that segment's semaphore, stays for a random transit time between `min_ms` and `max_ms`, and then posts the semaphore:
 
-#### C. Asymmetric Resource Acquisition (Dijkstra Hierarchy)
-For single-slot junctions, quadrant acquisition order is strictly ordered or uses two-phase reservation (`sem_trywait` with randomized exponential backoff), precluding indefinite hold-and-wait.
+```c
+sem_wait(&sim_state->segments[segment_index].capacity);   /* enter */
+/* ... transit delay ... */
+sem_post(&sim_state->segments[segment_index].capacity);   /* leave */
+```
+
+At most `capacity` vehicles are inside a segment at any moment.
+
+### 2.2 Why the Simulation Cannot Deadlock
+A deadlock needs the four Coffman conditions at the same time:
+
+1. **Mutual Exclusion:** Present. A segment has a limited number of slots.
+2. **Hold and Wait:** Absent. A vehicle releases its current segment (`sem_post`) before it requests the next one (`sem_wait`), so it never holds one segment while waiting for another.
+3. **No Preemption:** Present. A vehicle is never removed from a segment.
+4. **Circular Wait:** Impossible without hold and wait, since no vehicle waits while holding a slot.
+
+Because condition 2 never holds, a vehicle waiting for a segment is not blocking any other vehicle, and every waiting vehicle eventually gets a slot when the vehicles inside finish their transit.
+
+This is a simplification of real traffic: between two segments the vehicle holds no slot. A stricter model, in which a vehicle keeps its segment until it has entered the next one, would have hold and wait, and could deadlock when every segment is full of vehicles waiting for the next one. It would need an extra rule, such as limiting the vehicles inside the ring to the total capacity minus one. That variant is not implemented.
+
+The semaphores do not guarantee FIFO order among waiting vehicles, so the simulation guarantees progress but not strict fairness.
+
+### 2.3 Ordered Output
+Vehicles finish in any order, but their results are printed in vehicle-ID order. Each thread waits on a condition variable until `next_to_print` equals its ID, prints its path under `print_mutex`, increments `next_to_print` and broadcasts (`begin_print_turn` and `end_print_turn` in `src/roundabout.c`):
+
+```c
+pthread_mutex_lock(&sim_state->order_mutex);
+while (vehicle_id + 1 != sim_state->next_to_print) {
+  pthread_cond_wait(&sim_state->order_cond, &sim_state->order_mutex);
+}
+/* ... print the trajectory ... */
+sim_state->next_to_print++;
+pthread_cond_broadcast(&sim_state->order_cond);
+pthread_mutex_unlock(&sim_state->order_mutex);
+```
+
+A vehicle with an invalid entry or exit still takes its turn to report the error, so the vehicles after it are not left waiting.
 
 ---
 
-## 3. Architecture & Implementation
+## 3. Implementation
 
 ### 3.1 Data Structures
+Defined in `src/roundabout.h`:
+
 ```c
 typedef struct {
-    uint32_t id;
-    entry_point_t entry;
-    exit_point_t exit;
-    uint32_t delay_ms;
-    vehicle_state_t state;
-} vehicle_t;
+  int segment_capacity;
+  sem_t capacity;
+} Segment;
 
 typedef struct {
-    sem_t quadrants[4];
-    sem_t capacity_guard;
-    pthread_mutex_t stats_lock;
-    uint64_t total_vehicles_passed;
-    uint64_t total_wait_time_us;
-} roundabout_t;
+  int id;
+  char entry;   /* 'N', 'E', 'S', 'W' (or 'O') */
+  char exit;    /* 'N', 'E', 'S', 'W' (or 'O') */
+} Vehicle;
+
+typedef struct {
+  int vehicle_id;
+  char path[128];
+  int path_index;
+  long long total_transit_ns;
+} Trajectory;
+
+typedef struct {
+  Segment segments[NUM_SEGMENTS];
+  Vehicle vehicles[MAX_VEHICLES];
+  Trajectory trajectories[MAX_VEHICLES];
+  int num_vehicles;
+  int min_time;
+  int max_time;
+  int verbose_mode;
+  int next_to_print;
+  pthread_mutex_t print_mutex;
+  pthread_mutex_t order_mutex;
+  pthread_cond_t order_cond;
+} SimulationState;
 ```
 
-### 3.2 Vehicle Transit State Machine
+`NUM_SEGMENTS` is 4 and `MAX_VEHICLES` is 5,000.
+
+### 3.2 Vehicle Transit
 ```mermaid
 stateDiagram-v2
-    [*] --> Approaching : Thread Spawned
-    Approaching --> WaitingEntry : Arrive at Entry Gate
-    WaitingEntry --> Quadrant_K : Acquire Entry Permit & First Quadrant
-    Quadrant_K --> Quadrant_Next : Acquire Next Quadrant & Release Previous
-    Quadrant_Next --> Exiting : Reached Destination Exit
-    Exiting --> [*] : Release Last Quadrant & Entry Permit
+    [*] --> Waiting : Thread created
+    Waiting --> InSegment : sem_wait on the segment
+    InSegment --> Waiting : sem_post, next segment is not the exit
+    InSegment --> Finished : sem_post, next segment is the exit (or the ring is complete)
+    Finished --> Printed : Print turn reached (vehicle-ID order)
+    Printed --> [*]
 ```
+
+Each thread records the segments it crosses and its total transit time, measured with `CLOCK_MONOTONIC`. Transit delays are drawn with `rand_r` and a per-thread seed.
+
+### 3.3 Input and Parameters
+```text
+roundabout [min_ms=5] [max_ms=20] [capacity=3] [-v|--verbose] [-f file]
+```
+
+- **Numbers:** `min_ms`, `max_ms` and `capacity`, in that order. Flags may appear before, between or after them. Delays must be 0 or more, `max_ms` must not be smaller than `min_ms`, and the capacity must be at least 1.
+- **`-v` / `--verbose`:** Also prints each segment entry with its elapsed time.
+- **`-f file`:** Reads one vehicle per line as `ENTRY EXIT` (`N`, `E`, `S`, `W`; `O` is accepted for West). Without `-f`, 15 vehicles with random, different entry and exit points are generated.
 
 ---
 
 ## 4. Verification & Testing
 
-The suite includes deterministic stress tests verifying:
-- **No Deadlocks:** Under saturated loads (e.g., 200+ concurrent threads).
-- **FIFO Fairness:** Entry queues prevent starvation of vehicles originating from minor approaches.
-- **Resource Cleanup:** All semaphores, mutexes, and allocated memory structures are cleanly deallocated on shutdown.
+- **Smoke Test:** `make test` at the repository root runs `roundabout 2 5 2` (15 random vehicles, 2-5 ms per segment, capacity 2) together with the other modules.
+- **Manual Checks:** Running 3,000 vehicles from a file with capacity 1 and no delay, a file with an invalid direction, and invalid parameters (capacity 0, `max_ms` below `min_ms`, `-f` without a file) all finish with the expected output or error message.
+- **Resource Cleanup:** `cleanup_simulation` destroys the segment semaphores, both mutexes and the condition variable and frees the simulation state.
