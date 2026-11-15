@@ -41,6 +41,26 @@ long long time_since_start(struct timespec start_time) {
          (current_time.tv_nsec - start_time.tv_nsec);
 }
 
+/**
+ * Blocks until it is this vehicle's turn to print (vehicles print in ID order).
+ * Must be paired with end_print_turn().
+ */
+static void begin_print_turn(SimulationState* sim_state, int vehicle_id) {
+  pthread_mutex_lock(&sim_state->order_mutex);
+  while (vehicle_id + 1 != sim_state->next_to_print) {
+    pthread_cond_wait(&sim_state->order_cond, &sim_state->order_mutex);
+  }
+}
+
+/**
+ * Passes the print turn to the next vehicle ID.
+ */
+static void end_print_turn(SimulationState* sim_state) {
+  sim_state->next_to_print++;
+  pthread_cond_broadcast(&sim_state->order_cond);
+  pthread_mutex_unlock(&sim_state->order_mutex);
+}
+
 void* vehicle_thread(void* arg) {
   ThreadArgs* thread_args = (ThreadArgs*) arg;
   SimulationState* sim_state = thread_args->sim_state;
@@ -52,10 +72,15 @@ void* vehicle_thread(void* arg) {
   trajectory->path_index = 0;
 
   if (direction_to_index(v->entry) == -1 || direction_to_index(v->exit) == -1) {
+    /* Report the error in this vehicle's turn and pass the turn on,
+       so the vehicles after it are not left waiting forever */
+    begin_print_turn(sim_state, vehicle_id);
     pthread_mutex_lock(&sim_state->print_mutex);
+    fflush(stdout);
     fprintf(stderr, "Error: Vehicle %d has invalid entry/exit: %c -> %c\n",
             vehicle_id + 1, v->entry, v->exit);
     pthread_mutex_unlock(&sim_state->print_mutex);
+    end_print_turn(sim_state);
     free(thread_args);
     return NULL;
   }
@@ -115,10 +140,7 @@ void* vehicle_thread(void* arg) {
   trajectory->total_transit_ns = time_since_start(start_time);
 
   /* Ordered barrier output: prints vehicles in arrival ID order */
-  pthread_mutex_lock(&sim_state->order_mutex);
-  while (trajectory->vehicle_id + 1 != sim_state->next_to_print) {
-    pthread_cond_wait(&sim_state->order_cond, &sim_state->order_mutex);
-  }
+  begin_print_turn(sim_state, vehicle_id);
 
   pthread_mutex_lock(&sim_state->print_mutex);
   printf("Vehicle %3d (%c -> %c): ", trajectory->vehicle_id + 1, v->entry, v->exit);
@@ -131,9 +153,7 @@ void* vehicle_thread(void* arg) {
   printf(" [Transit: %.2f ms]\n", trajectory->total_transit_ns / 1000000.0);
   pthread_mutex_unlock(&sim_state->print_mutex);
 
-  sim_state->next_to_print++;
-  pthread_cond_broadcast(&sim_state->order_cond);
-  pthread_mutex_unlock(&sim_state->order_mutex);
+  end_print_turn(sim_state);
 
   free(thread_args);
   return NULL;
