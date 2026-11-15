@@ -20,14 +20,43 @@ int main(int argc, char* argv[]) {
   int verbose_mode = 0;
   int auto_vehicle_count = 15;
 
-  if (argc >= 2) min_time = atoi(argv[1]);
-  if (argc >= 3) max_time = atoi(argv[2]);
-  if (argc >= 4) segment_capacity = atoi(argv[3]);
+  const char* input_file = NULL;
+  int positional = 0;
 
+  /* Flags may appear anywhere; the remaining arguments are, in order,
+     min_ms, max_ms and capacity */
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
       verbose_mode = 1;
+    } else if (strcmp(argv[i], "-f") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: -f needs a file name.\n");
+        return EXIT_FAILURE;
+      }
+      input_file = argv[++i];
+    } else {
+      int value = atoi(argv[i]);
+      switch (positional++) {
+        case 0:  min_time = value; break;
+        case 1:  max_time = value; break;
+        case 2:  segment_capacity = value; break;
+        default:
+          fprintf(stderr, "Error: Unexpected argument: %s\n", argv[i]);
+          return EXIT_FAILURE;
+      }
     }
+  }
+
+  if (min_time < 0 || max_time < 0 || segment_capacity < 1) {
+    fprintf(stderr, "Error: Delays must be 0 or more and the capacity at least 1.\n");
+    return EXIT_FAILURE;
+  }
+  if (positional == 1 && max_time < min_time) {
+    max_time = min_time;  /* Only min_ms given above the default max_ms */
+  }
+  if (max_time < min_time) {
+    fprintf(stderr, "Error: max_ms (%d) is smaller than min_ms (%d).\n", max_time, min_time);
+    return EXIT_FAILURE;
   }
 
   printf("====================================================================\n");
@@ -44,15 +73,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  pthread_t threads[MAX_VEHICLES];
+  static pthread_t threads[MAX_VEHICLES];
   int count = 0;
-  const char* input_file = NULL;
-
-  for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
-      input_file = argv[++i];
-    }
-  }
 
   if (input_file) {
     FILE* f = fopen(input_file, "r");
@@ -91,11 +113,24 @@ int main(int argc, char* argv[]) {
   sim_state->num_vehicles = count;
 
   /* Spawn vehicle threads concurrently */
+  int started = 0;
   for (int i = 0; i < count; ++i) {
     ThreadArgs* args = (ThreadArgs*) malloc(sizeof(ThreadArgs));
+    if (!args) break;
     args->sim_state = sim_state;
     args->vehicle = &sim_state->vehicles[i];
-    pthread_create(&threads[i], NULL, vehicle_thread, args);
+    if (pthread_create(&threads[i], NULL, vehicle_thread, args) != 0) {
+      free(args);
+      break;
+    }
+    started++;
+  }
+
+  if (started < count) {
+    /* Vehicles that were not started would never take their print turn,
+       so the started ones could wait forever: stop here */
+    fprintf(stderr, "Error: Could only start %d of %d vehicle threads.\n", started, count);
+    exit(EXIT_FAILURE);
   }
 
   /* Wait for all vehicle threads to reach their destination */
